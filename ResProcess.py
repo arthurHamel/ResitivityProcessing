@@ -1,24 +1,141 @@
 
-import matplotlib
-import numpy as np
-import matplotlib.cm as cm
-import matplotlib.mlab as mlab
-import matplotlib.pyplot as plt
+
 import os
 import sys
 import gdal, osr, ogr
-from PIL import Image
-import cv2
-
 
 sitename='sa24a'
-path= 'C:\\sync\\wrk\\Appia0216\\Hekje_oud\\sa24'
+path= 'C:\\sync\\wrk\\Appia0216\\Hekje_nieuw\\'
 pathTif= path + '\\tif\\'
 pathCsv= path + '\\raw\\'
 
+def downloadRM85():
+	import os.path
+	import serial
+	ser = serial.Serial('COM3', 9600, timeout=1) #Tried with and without the last 3 parameters, and also at 1Mbps, same happens.
+	ser.flushInput()
+	ser.flushOutput()
+	overwrite="ask"
+	print("Waiting for data...")
+	started = 0
+	ii=0
+	data_raw=""
+	while True:
+		bytesToRead = ser.readline()
+		if (bytesToRead!=""):
+			started=1
+			ii+=1
+			if (ii<10):
+				countStr=str("0%s" %ii)
+			else: 
+				countStr=ii
+			datafiltered=""
+			for x in range (0,20):
+				sys.stdout.write("\rLoading Grid %s\tL%s" %(ii,(x+1)))
+				sys.stdout.flush()
+				line=""
+				for y in range (0,20):
+					
+					if (x==0 and y==0):
+						dataline=str(bytesToRead)
+					else:
+						dataline=str(ser.readline())
+					metadataline=str(ser.readline())
+					if ("4095" in dataline):  
+						value="0"
+					elif ("4094" in dataline):
+						value="0.01"
+					else:
+						if ('11' in metadataline):
+							value=int(dataline.strip())*10
+						else:
+							value=int(dataline.strip())
+						value=value/float(255)
+						value= str("%.2f" % round(value, 2))#convert to resistance values
+					if (x%2!=0):#Zigzag mode
+						if (y >0):
+							value+=","
+						line=str(value)+line
+					else:
+						if (y < 19):
+							value+=","
+						line+=str(value)#/(float(255)))
+						
+				if (x<20):
+					datafiltered+=line+"\n"
+			fname='%ssa24a_1%s.csv' %(pathCsv,countStr)
+			if (os.path.isfile(fname) and overwrite=="ask"):
+				while True:
+					overwrite=raw_input('\nGrid already downloaded. Overwite?\n YA:Yes for all\n Y:Yes\n N: Not this one\n NA: Only add new grids\n').lower()
+					if (overwrite=="y" or overwrite=="ya"):
+						fileout= open(fname, 'wb')
+						fileout.write(datafiltered)
+						fileout.close()
+						sys.stdout.write(" Existed (Overwritten)")
+						break
+					elif (overwrite=="n" or overwrite=="na"):
+						sys.stdout.write(" Existed (Not Overwritten)")
+						break
+				if (overwrite=="y" or overwrite=="n"):
+					overwrite="ask"
+			elif (os.path.isfile(fname) and overwrite=="ya"):
+				fileout= open(fname, 'wb')
+				fileout.write(datafiltered)
+				fileout.close()
+				sys.stdout.write(" Existed (Overwritten)")
+			elif (os.path.isfile(fname) and overwrite=="na"):
+				sys.stdout.write(" Existed (Not Overwritten)")
+			else:
+				fileout= open(fname, 'wb')
+				fileout.write(datafiltered)
+				fileout.close()
+			
+			
+			
+			sys.stdout.write("\n")
+			sys.stdout.flush()
+		if (started==1 and bytesToRead==''):
+			print('Finished')
+			break
 
 
+	
+def testFilterdata():
+	file= open('C:\\sync\\wrk\\Appia0216\\Hekje_niew\\test2.txt', 'r')
+	
+	data_split= file.readlines()
+	numberOfGrids= int(len(data_split)/float(800))
+	print("%s grids loaded" % numberOfGrids)
+	out=""
+	datafiltered=""
+	for ii in range (0, numberOfGrids):
+		out+="----Grid %s----\n" %(ii+1)
+		datafiltered=""
+		for x in range (0,20):
+			for y in range (0,20):
+				if (x%2!=0):#Zigzag mode
+					y_effect= 19-y
+				else:
+					y_effect=y
+				i= 2*(ii*400+(x*20)+(y_effect))
+				if "4095" in data_split[i]:  
+					datafiltered+="0"
+				else:
+					datafiltered+=str(int(data_split[i].strip()))#/(float(255)))
+					
+				if (y < 19):
+					datafiltered+=","
+			datafiltered+="\n"
+		datafiltered+="\n"
+		out=datafiltered
+		fileout= open('C:\\sync\\wrk\\Appia0216\\Hekje_niew\\raw\\sa24a_10%s.csv' %ii, 'wb')
+		fileout.write(out)
+		fileout.close()
+	file.close()
+	
+	
 def dataInputRes2d():
+	import numpy as np
 	#file=raw_input('Enter file')
 	file='C:\\Data\\Tapino\\S.Andrea_TAP23\\cross-section\\Test2\\tap23_cs1_dd.csv'
 	gridname=raw_input('Enter grid name')
@@ -54,6 +171,11 @@ def dataInputRes2d():
 	
 	
 def processDipoleDipole(tempfile):
+	import numpy as np
+	import matplotlib
+	import matplotlib.mlab as mlab
+	import matplotlib.pyplot as plt
+	import matplotlib.cm as cm
 	while True:
 		dest=raw_input('Enter your destination:')
 		if os.path.exists(dest):
@@ -119,7 +241,7 @@ def processDipoleDipole(tempfile):
 			break;
 
 def mergeDipoleDipole(arraylist,dir):
-	
+	import numpy as np
 	overlap=input('Overlap?')
 	depthlevels=input('Depth levels?')
 	if len(arraylist)<=1:
@@ -198,20 +320,21 @@ def findNewGrids():
 	del (csvs ,tifs ,listCsv, listTif)
 
 def csv2tif(newGrids):
+	import numpy as np
 	batchChoice=raw_input("NewGrids to Tiffs? ")
 	for tempfile in newGrids:
 		mat=np.genfromtxt(pathCsv+tempfile+'.csv',delimiter=',');
-# 		rotate=raw_input(tempfile + ": Rotate? (rot: 90 180 flip: ud lr -- enter to skip")
-# 		if '90' in rotate:
-# 			mat=np.rot90(mat,1)
-# 		elif '180' in rotate:
-# 			mat=np.rot90(mat,2)
-# 		elif '270' in rotate:
-# 			mat=np.rot90(mat,3)
-# 		if 'ud' in rotate:
-# 			mat=np.flipud(mat)
-# 		elif 'lr' in rotate:
-# 			mat=np.fliplr(mat)
+ 		rotate=raw_input(tempfile + ": Rotate? (rot: 90 180 flip: ud lr -- enter to skip")
+ 		if '90' in rotate:
+ 			mat=np.rot90(mat,1)
+ 		elif '180' in rotate:
+ 			mat=np.rot90(mat,2)
+ 		elif '270' in rotate:
+ 			mat=np.rot90(mat,3)
+ 		if 'ud' in rotate:
+ 			mat=np.flipud(mat)
+ 		elif 'lr' in rotate:
+ 			mat=np.fliplr(mat)
 		mat=np.flipud(mat)
 		x=mat.shape[1]
 		y=mat.shape[0]
@@ -221,10 +344,11 @@ def csv2tif(newGrids):
 		exportGeoTiff( x, step,y, filename, mat,'no');
 
 def getGeometry():
+	import numpy as np
 	index=np.genfromtxt(pathTif+'geometry.txt',dtype='string');
 	return index;
 def csv2matrix(filename):
-	
+	import numpy as np
 	mat=np.genfromtxt(pathCsv+filename+'*.csv',delimiter=',');
 
 def hillshade(array, azimuth, angle_altitude, z): 
@@ -257,6 +381,7 @@ def hillshade(array, azimuth, angle_altitude, z):
     return shaded*nodata
    				
 def exportGeoTiff( x, step,y, filename, mat,georef):
+	import numpy as np
 	#get coordinates
 	mat=np.int16(mat)
 	if (georef=='yes'):
@@ -314,6 +439,12 @@ def exportGeoTiff( x, step,y, filename, mat,georef):
 
 	
 def findHoles():
+	import numpy as np
+	import matplotlib
+	import matplotlib.mlab as mlab
+	import matplotlib.pyplot as plt
+	import matplotlib.cm as cm
+	from PIL import Image
 	import scipy as sp
 	import scipy.ndimage.morphology
 	image = Image.open(pathTif+'ciocca_mosaic.tif')
@@ -331,10 +462,33 @@ def findHoles():
 	plt.show()
 
 	
-	
+def convertData():
+	import numpy as np
+	listTif=os.listdir(pathTif)
+	for i in range (0,len(listTif)):
+		print (pathTif+listTif[i])
+		try:
+			im = Image.open(pathTif+listTif[i])
+		except:
+			print ('Warning: Grid '+index[i][ii]+'  not found.')
+		
+		A=np.array(im)
+		x=A.shape[1]
+		y=A.shape[0]
+		step=1
+		mat=(10*A)
+		filename=listTif[i].split(".")
+		filename=filename[0].split('grid')
+		filename="sa3_"+filename[1]
+		print (x +y)
+		print (pathTif+filename)
+		exportGeoTiff( x, step,y, filename, mat,'no');
+		
 	
 def makeMosaic():
-	
+	import numpy as np
+	from PIL import Image
+	import numpy as np
 	gridSize=(20,20)
 	index=getGeometry()
 	zero=np.zeros(gridSize)
@@ -373,6 +527,7 @@ def makeMosaic():
 	makePreview(mos,filename)
 	
 def extractWMS():
+	from PIL import Image
 	from owslib.wms import WebMapService
 	urlList=['http://servizi.geo.regione.molise.it/arcgis/services/Uso_suolo/MapServer/WMSServer', 
 		'http://servizi.geo.regione.molise.it/arcgis/services/Viabilita_Teleatlas/MapServer/WMSServer',
@@ -490,6 +645,13 @@ def extractWMS():
 	print('Done')
 
 def makePreview(array, filename):
+	import numpy as np
+	import matplotlib
+	import matplotlib.mlab as mlab
+	import matplotlib.pyplot as plt
+	import matplotlib.cm as cm
+	from PIL import Image
+	import cv2
 	import scipy.ndimage
 	x=array.shape[0]
 	y=array.shape[1]
@@ -537,7 +699,7 @@ def makePreview(array, filename):
 		
 def main():
 	while(True):
-		menu=raw_input(" l     Process All\n m     Create mosaic \n f     Find Holes regions \n e     Extract WMS\n c     Create Cross section \n q     Quit\n\n")
+		menu=raw_input(" l     Process All\n m     Create mosaic \n d     Download data RM85\n f     Find Holes regions \n e     Extract WMS\n c     Create Cross section \n q     Quit\n\n")
 		if menu == 'q':
 			exit();
 
@@ -555,7 +717,13 @@ def main():
 			continue;
 		
 		elif menu == "e":
-			extractWMS()
+			convertData()
+			#extractWMS()
+			continue;
+			
+		elif menu == "d":
+			downloadRM85()
+			#testFilterdata()
 			continue;
 		
 		elif menu == "f":
