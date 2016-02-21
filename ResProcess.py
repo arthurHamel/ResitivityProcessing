@@ -4,21 +4,44 @@ import os
 import sys
 import gdal, osr, ogr
 
-sitename='sa24a'
-path= 'C:\\sync\\wrk\\Appia0216\\Hekje_nieuw\\'
-pathTif= path + '\\tif\\'
-pathCsv= path + '\\raw\\'
+sitename='sa1'
+path='C:\\sync\\wrk\\Appia0216\\GeoRes\\sa1'
+pathTif=path+ '\\tif\\'
+pathCsv=path+'\\raw\\'
 
+def getSites():
+	import os, sys
+	dir= 'C:\\sync\\wrk\\Appia0216\\GeoRes\\'
+	sites = os.listdir(dir)
+	if (len(sites)>0):
+		for i in range (0,len(sites)):
+			print("%s\t%s" %(i+1, sites[i]))
+		while(True):
+			siteSelect=input()
+			if siteSelect in range (1, len(sites)+1):
+				path=dir+sites[siteSelect-1]
+				print (sites[siteSelect-1]+" selected." + path)
+				pathTif= path + '\\tif\\'
+				pathCsv= path + '\\raw\\'
+				break
+			else:
+				print('Enter valid number')
+				continue;
+	else:
+		print('No site dircetory found')
+	return(path, pathTif, pathCsv)
+	
 def downloadRM85():
 	import os.path
 	import serial
 	ser = serial.Serial('COM3', 9600, timeout=1) #Tried with and without the last 3 parameters, and also at 1Mbps, same happens.
 	ser.flushInput()
 	ser.flushOutput()
-	overwrite="ask"
+	overwrite="na"
+	init=int(raw_input('first grid number:'))
 	print("Waiting for data...")
 	started = 0
-	ii=0
+	ii=init-1
 	data_raw=""
 	while True:
 		bytesToRead = ser.readline()
@@ -63,7 +86,7 @@ def downloadRM85():
 						
 				if (x<20):
 					datafiltered+=line+"\n"
-			fname='%ssa24a_1%s.csv' %(pathCsv,countStr)
+			fname='%ssa1_%s.csv' %(pathCsv,countStr)
 			if (os.path.isfile(fname) and overwrite=="ask"):
 				while True:
 					overwrite=raw_input('\nGrid already downloaded. Overwite?\n YA:Yes for all\n Y:Yes\n N: Not this one\n NA: Only add new grids\n').lower()
@@ -101,7 +124,8 @@ def downloadRM85():
 
 	
 def testFilterdata():
-	file= open('C:\\sync\\wrk\\Appia0216\\Hekje_niew\\test2.txt', 'r')
+	inputName=raw_input('Enter file name:')
+	file= open('C:\\sync\\wrk\\Appia0216\\RM85_data\\raw\\'+inputName+'.txt', 'r')
 	
 	data_split= file.readlines()
 	numberOfGrids= int(len(data_split)/float(800))
@@ -121,18 +145,86 @@ def testFilterdata():
 				if "4095" in data_split[i]:  
 					datafiltered+="0"
 				else:
-					datafiltered+=str(int(data_split[i].strip()))#/(float(255)))
+					datafiltered+='%.2f' %(int(data_split[i].strip())/(float(10)))
 					
 				if (y < 19):
 					datafiltered+=","
 			datafiltered+="\n"
 		datafiltered+="\n"
 		out=datafiltered
-		fileout= open('C:\\sync\\wrk\\Appia0216\\Hekje_niew\\raw\\sa24a_10%s.csv' %ii, 'wb')
+		fileout= open('C:\\sync\\wrk\\Appia0216\\RM85_data\\csv\\sa1_10%s_.csv' %ii, 'wb')
 		fileout.write(out)
 		fileout.close()
 	file.close()
 	
+def Excel2CSV():
+	import os
+	import xlrd
+	import csv
+	dir='C:\\sync\\wrk\\Appia0216\\RM85_data\\matrix_excel\\'
+	listXls=os.listdir(dir)
+	for i in range (0, len(listXls)):
+		ExcelFile=dir+listXls[i]
+		outputname=((listXls[i].split('grid'))[1].split('.'))[0]
+		print outputname
+		CSVFile='C:\\sync\\wrk\\Appia0216\\RM85_data\\csv\\sa1_10%s.csv' %outputname
+		workbook = xlrd.open_workbook(ExcelFile)
+		worksheet = workbook.sheet_by_index(0)
+		csvfile = open(CSVFile, 'wb')
+		wr = csv.writer(csvfile, quoting=csv.QUOTE_NONE)
+
+		for rownum in xrange(worksheet.nrows):
+			row= worksheet.row_values(rownum)
+			newrow=lst = [None] * len(row)
+			for ii in range (0,len(row)):
+				row[ii]=float(row[ii])
+				if (row[ii]=='4095.0'):
+					newrow[ii]=0.0
+				else:
+					newrow[ii]=float(row[ii])/10
+			wr.writerow(newrow)
+
+		csvfile.close()
+
+def histeq(im,nbr_bins=256):
+	from PIL import Image
+	from numpy import *
+	#get image histogram
+	imhist,bins = histogram(im.flatten(),nbr_bins,normed=True)
+	cdf = imhist.cumsum() #cumulative distribution function
+	cdf = 255 * cdf / cdf[-1] #normalize
+
+	#use linear interpolation of cdf to find new pixel values
+	im2 = interp(im.flatten(),bins[:-1],cdf)
+
+	return im2.reshape(im.shape), cdf
+   
+def despike(array):
+	cols=array.shape[0]
+	rows=array.shape[1]
+	despikeArray=array
+	count=0
+	for x in range (1, cols-2):
+		for y in range (1, rows-2):
+			value=array[x][y]
+			neighbours=[array[x-1][y-1],array[x][y-1],array[x+1][y-1],array[x-1][y],array[x+1][y],array[x-1][y+1],array[x][y+1],array[x+1][y+1]]
+			if (neighbours.count(0.0)<3):
+				mean=sum(neighbours)/float(len(neighbours))			
+				for n in (0,7):
+					if (neighbours[n]/mean>float(1.5) or neighbours[n]/mean<float(0.66) ):
+						oddNeighbours=1
+					else:
+						oddNeighbours=0
+				if (oddNeighbours==0):
+					if (value/mean>3 or value/mean<0.33 ):
+						despikeArray[x][y]=int(mean)
+						count+=1
+					else:
+						despikeArray[x][y]=value
+			else:
+				despikeArray[x][y]=value
+	print("%s values despiked." %count)
+	return despikeArray
 	
 def dataInputRes2d():
 	import numpy as np
@@ -321,35 +413,131 @@ def findNewGrids():
 
 def csv2tif(newGrids):
 	import numpy as np
-	batchChoice=raw_input("NewGrids to Tiffs? ")
+	batchChoice=raw_input("Do you need to rotate(enter to skip, y for yes)? ")
+	
 	for tempfile in newGrids:
 		mat=np.genfromtxt(pathCsv+tempfile+'.csv',delimiter=',');
- 		rotate=raw_input(tempfile + ": Rotate? (rot: 90 180 flip: ud lr -- enter to skip")
- 		if '90' in rotate:
- 			mat=np.rot90(mat,1)
- 		elif '180' in rotate:
- 			mat=np.rot90(mat,2)
- 		elif '270' in rotate:
- 			mat=np.rot90(mat,3)
- 		if 'ud' in rotate:
- 			mat=np.flipud(mat)
- 		elif 'lr' in rotate:
- 			mat=np.fliplr(mat)
+		if "yes" in batchChoice:
+			rotate=raw_input(tempfile + ": Rotate? (rot: 90 180 flip: ud lr -- enter to skip\n\
+ _____   _____   _____   _____   _____   _____   _____   _____\n\
+||    | |-    | |    || |    -| |     | |     | |     | |     |\n\
+|     | |     | |     | |     | |     | |     | |     | |     |\n\
+|_____| |_____| |_____| |_____| |____-| |____|| |-____| ||____|\n\
+   1       2       3       4       5       6       7       8\n")
+			if '90' in rotate:
+				mat=np.rot90(mat,1)
+			elif '180' in rotate:
+				mat=np.rot90(mat,2)
+			elif '270' in rotate:
+				mat=np.rot90(mat,3)
+			if 'ud' in rotate:
+				mat=np.flipud(mat)
+			elif 'lr' in rotate:
+				mat=np.fliplr(mat)
 		mat=np.flipud(mat)
 		x=mat.shape[1]
 		y=mat.shape[0]
 		step=1
 		mat=(100*mat)
 		filename=tempfile
-		exportGeoTiff( x, step,y, filename, mat,'no');
+		exportGeoTiff(filename, mat);
 
 def getGeometry():
 	import numpy as np
 	index=np.genfromtxt(pathTif+'geometry.txt',dtype='string');
 	return index;
-def csv2matrix(filename):
+	
+def convertCoordinates(inEPSG, outEPSG, x, y):
+	from pyproj import Proj, transform
+	inProj = Proj(init='epsg:'+inEPSG)#whatever system in metric units
+	outProj = Proj(init='epsg:'+outEPSG)
+	x2,y2 = transform(inProj,outProj,x,y)
+	return x2,y2
+	
+def getGeoRef():
+	import math
+	try:
+		text_file = open(pathTif+'georef.txt', "r")
+		for line in text_file: 
+			if "EPSG" in line:
+				lineSplit=line.split("=")
+				epsg=lineSplit[1].strip('\n')
+			elif "GRIDPOINT1" in line:
+				lineSplit=line.split("=")
+				lineSplit=lineSplit[1].split(",")
+				gridPoint1=(lineSplit[0],lineSplit[1].strip('\n'))
+			elif "GRIDPOINT2" in line:
+				lineSplit=line.split("=")
+				lineSplit=lineSplit[1].split(",")
+				gridPoint2=(lineSplit[0],lineSplit[1].strip('\n'))
+			elif "COORDPOINT1" in line:
+				lineSplit=line.split("=")
+				lineSplit=lineSplit[1].split(",")
+				coordPoint1=(lineSplit[0],lineSplit[1].strip('\n'))
+			elif "COORDPOINT2" in line:
+				lineSplit=line.split("=")
+				lineSplit=lineSplit[1].split(",")
+				coordPoint2=(lineSplit[0],lineSplit[1].strip('\n'))
+		print('Georeferencing from file...')
+		georef=[epsg,gridPoint1,coordPoint1,gridPoint2,coordPoint2]
+		print(georef)
+	except:
+		print('No georeferencing file found')
+		georef=""
+	if (georef!=""):
+		#define angle of grids
+		dXGrid=float(gridPoint2[0])-float(gridPoint1[0])
+		dYGrid=float(gridPoint2[1])-float(gridPoint1[1])
+		if (dYGrid==0):
+			anglegridAxix=0
+		else:
+			anglegridAxix=math.atan(dXGrid/dYGrid)
+		print (anglegridAxix)
+		
+		x1,y1 = coordPoint1[0], coordPoint1[1]#convertCoordinates('3004', '32633', coordPoint1[0], coordPoint1[1])
+		x2,y2 = coordPoint2[0], coordPoint2[1]#convertCoordinates('3004', '32633', coordPoint2[0], coordPoint2[1])
+		
+		dX=float(x2)-float(x1)
+		dY=float(y2)-float(y1)
+		angle=math.atan(dX/dY)
+		print(angle)
+		dAngle=angle-anglegridAxix
+		#Need to define the size of the grid in the coordinate system
+		
+		
+		
+		
+		#find origin of the grid
+		dYtoOrigin= math.sin(dAngle)*20*float(gridPoint1[1])
+		print(dYtoOrigin, float(y1))
+		dXtoOrigin= math.cos(dAngle)*20*float(gridPoint1[0])
+		print(dXtoOrigin, float(x1))
+		print (dXtoOrigin, dYtoOrigin)
+		origin=(float(x1)+dXtoOrigin, float(y1)+dYtoOrigin)
+		pi = math.pi
+		angleDegrees = (180 * dAngle / pi)-90
+		print(angleDegrees)
+		xorig, yorig=convertCoordinates('3004', '3004', origin[0], origin[1])
+		georef= [angleDegrees, xorig, yorig, 3004]
+		print (georef)
+	return georef
+	
+def csv2matrix():
 	import numpy as np
-	mat=np.genfromtxt(pathCsv+filename+'*.csv',delimiter=',');
+	import os
+	dir='C:\\sync\\wrk\\Appia0216\\GeoRes\\frank\\convert\\'
+	list=os.listdir(dir)
+	print('Converting %s files' % len(list))
+	for a in range(0,len(list)):
+		filename=dir+list[a]
+		mat=np.genfromtxt(filename,delimiter=',')
+		for i in range (0,mat.shape[0]):
+			for ii in range (0,mat.shape[1]):
+				if (mat[ii][i]==409.5):
+					mat[ii][i]=0
+				elif (mat[ii][i]!=0.0):
+					mat[ii][i]=round(mat[ii][i]/2.55, 2)
+		np.savetxt(filename, mat, delimiter=",", fmt='%.2f')
 
 def hillshade(array, azimuth, angle_altitude, z): 
     from numpy import gradient
@@ -380,40 +568,29 @@ def hillshade(array, azimuth, angle_altitude, z):
     
     return shaded*nodata
    				
-def exportGeoTiff( x, step,y, filename, mat,georef):
+def exportGeoTiff( filename, mat):
 	import numpy as np
 	#get coordinates
 	mat=np.int16(mat)
-	if (georef=='yes'):
-		shapefile = path+"grid\\fishnet.shp"
-		driver = ogr.GetDriverByName("ESRI Shapefile")
-		dataSource = driver.Open(shapefile, 0)
-		layer = dataSource.GetLayer()
-		sref=layer.GetSpatialRef()
-		feature_elmt = layer.GetNextFeature()
-		field_vals = []
-		while feature_elmt:
-			field_vals.append(feature_elmt.GetFieldAsString('Grid_ID'))
-			feature_elmt = layer.GetNextFeature()
-			while True:
-				gridnum=(filename.split("_"))[1];
-				gridID=gridnum;
-				if gridID in field_vals:
-					#format the request
-					querry="Grid_ID = '"+gridID+"'";
-					layer.SetAttributeFilter(querry)
-					for feature in layer:
-						xCoord=float(feature.GetField("X"))
-						yCoord=float(feature.GetField("Y"))
-
-				else: 
-					print('No grid with this reference.')
-				break;
+	mat=np.flipud(mat)
+	georef=getGeoRef()
+	if (georef!=''):
+		xCoord=georef[1]
+		yCoord=georef[2]
+		rotY=georef[0]+90
+		rotX=georef[0]+90
+		epsg=georef[3]
+		print('Autogeoref...')
 	else:
 		xCoord=0
 		yCoord=0
-	xSize=int(x/step)
-	ySize=int(y/step)
+		rotX=0
+		rotY=0
+		epsg=32633
+		print('No georeferencing')
+	xSize=mat.shape[1]
+	ySize=mat.shape[0]
+	step=1
 	output_file=pathTif+filename+'.tif'
 	# Create gtif (uncomment when using gdal)
 	# 
@@ -422,11 +599,11 @@ def exportGeoTiff( x, step,y, filename, mat,georef):
 	dst_ds = driver.Create(output_file, xSize, ySize, 1, DataType)
 
 	#top left x, w-e pixel resolution, rotation, top left y, rotation, n-s pixel resolution
-	dst_ds.SetGeoTransform( [ xCoord , step , 0, yCoord , 0, step ] )
+	dst_ds.SetGeoTransform( [ xCoord , step , rotX, yCoord ,  rotY, step ] )
 
 	#set the reference info 
 	srs = osr.SpatialReference()
-	srs.ImportFromEPSG(32633)
+	srs.ImportFromEPSG(epsg)
 	dst_ds.SetProjection( srs.ExportToWkt() )
 	
 
@@ -482,8 +659,45 @@ def convertData():
 		filename="sa3_"+filename[1]
 		print (x +y)
 		print (pathTif+filename)
-		exportGeoTiff( x, step,y, filename, mat,'no');
-		
+		exportGeoTiff( filename, mat);
+
+def equalizeHorz(A,B):
+	import numpy as np
+	from PIL import Image
+	import numpy as np
+	if (A.shape[0]!=B.shape[0]):
+		print('Warning sizes ara different!')
+	ALastLine=A[:,A.shape[1]-1]
+	BLastLine=B[:,B.shape[1]-1]
+	if ((BLastLine==0.0).sum()<B.shape[1] and (BLastLine==0.0).sum()<A.shape[1]):
+		diffArray=np.empty(A.shape[0])
+		for i in range (0, A.shape[0]):
+			if (ALastLine[i]!=0 and BLastLine[i]!=0):
+				diffArray[i]=float(ALastLine[i])-float(BLastLine[i])
+		preDiffMean=np.median(diffArray)
+		count=0
+		ii=0
+		diffArrayExtremesOut=0
+		print(len(diffArray))
+		for i in range (0, len(diffArray)):
+			if (diffArray[i]/preDiffMean<float(0.2) or diffArray[i]/preDiffMean>float(5)):
+				count+=1
+			else:
+				diffArrayExtremesOut+=diffArray[i]
+				ii+=1
+		diffMean=diffArrayExtremesOut/float(ii)
+		print(diffMean)
+		if (ii>10):
+			BEqualized=np.empty(B.shape, dtype='float64')
+			BEqualized=B+diffMean#/float(2)
+		else:
+			print('not enough correspondances')
+			BEqualized=B
+		print('%s values used. %s ignored. Average: %s' %(ii, count, diffMean))
+	else:
+		print ('empty grid neighbour')
+		BEqualized=B
+	return BEqualized;
 	
 def makeMosaic():
 	import numpy as np
@@ -510,7 +724,10 @@ def makeMosaic():
 			if (ii==0):
 				line=A
 			else:
-				line=np.concatenate((line,A),axis=1)
+				#print('--------Grid: %s - %s -------' %(i, ii))
+				grid=A
+				#grid=equalizeHorz(line,A)
+				line=np.concatenate((line,grid),axis=1)
 				
 		if (i==0):
 			mos=line
@@ -520,129 +737,14 @@ def makeMosaic():
 	step=1
 	xtif=y*gridSize[0]
 	ytif=x*gridSize[1]
+	mos=despike(mos)
 	print('%s x %s' %(x,y))
-	exportGeoTiff( xtif, step,ytif, filename, mos,'no')
+	exportGeoTiff(filename, mos)
 	hs_array = hillshade(mos,45, 315, 0.0025)
-	exportGeoTiff( xtif, step,ytif, filename+"_hs", hs_array,'no')
+	exportGeoTiff(filename+"_hs", hs_array)
+	mos,cdf = histeq(mos)
 	makePreview(mos,filename)
 	
-def extractWMS():
-	from PIL import Image
-	from owslib.wms import WebMapService
-	urlList=['http://servizi.geo.regione.molise.it/arcgis/services/Uso_suolo/MapServer/WMSServer', 
-		'http://servizi.geo.regione.molise.it/arcgis/services/Viabilita_Teleatlas/MapServer/WMSServer',
-		'http://servizi.geo.regione.molise.it/arcgis/services/Ortofoto_Molise_2007/MapServer/WMSServer',
-		'http://wms.pcn.minambiente.it/ogc?map=/ms_ogc/WMS_v1.3/raster/ortofoto_colore_12.map'
-	]
-	
-	dest='\\VUW\Personal$\Homes\H\hamelac1\Downloads'
-	filename='WMS_output'
-	print('Available WMS servers (enter number or empty for custom)')
-	for i in range(0,len(urlList)):
-		print ('%s   %s' %(i+1,urlList[i]))
-	choice=input()
-	if (not choice):
-		wmsUrl=raw_input('Enter custom WMS address:')
-	else:
-		wmsUrl=urlList[choice-1]
-	print('Getting Info...')
-	wms = WebMapService(wmsUrl, version='1.1.1')
-	print('Service Name : '+wms.identification.title)
-	layerList=list(wms.contents)
-	print('Available layers')
-	for i in range(0,len(layerList)):
-		print ('%s   %s' %(i+1,layerList[i]))
-	choiceLayer=input()
-	layer=layerList[choiceLayer-1]
-	boundingBox=(14.50, 41.65, 14.55, 41.68) #xmin,ymin,xmax, ymax   
-	#a205: 14.264, 41.582 , 14.273, 41.591
-	#poi4026:  14.346355, 41.578670, 14.354092, 41.585850
-	#a405: 14.166, 41.619, 14.70, 41.623
-	#laromana: 14.179, 41.618, 14.192, 41.624 
-	#Tap03: 14.731, 41.572, 14.738, 41.575
-	#CSA:  14.522, 41.656 14.532, 41.666
-	#Isernia: 14.071, 41.509, 14.361, 41.679
-	
-	sizeImg=(2000,2000)
-	print ('Getting '+layer)
-	xextend=boundingBox[2]-boundingBox[0]
-	yextend=boundingBox[3]-boundingBox[1]
-	
-	if (xextend>0.01 and yextend>0.01):
-		rows=yextend/0.01;
-		cols=xextend/0.01;
-		
-		blank_im = Image.new('RGB', (cols*sizeImg[0],rows*sizeImg[1]))
-		
-		for i in range (0, rows):
-			windowBBox=(0, boundingBox[1] + (i*0.01), 0, boundingBox[3] + (i*0.01))
-			for ii in range (0, cols):
-				windowBBox[0]=boundingBox[0] + (i*0.01)
-				windowBBox[2]=boundingBox[2] + (i*0.01)
-				img = wms.getmap(layers=[layer],
-				srs = 'EPSG:4326',
-				bbox = windowBBox,
-				size = sizeImg,
-				format = 'image/png',
-				transparent = True
-				)
-				blank_im.paste(img, (i*sizeImg[0], i*sizeImg[1]))
-				blank_im.show()
-		img=blank_im
-		
-	else: 	
-		img = wms.getmap(layers=[layer],
-        srs = 'EPSG:4326',
-        bbox = boundingBox,
-        size = sizeImg,
-        format = 'image/png',
-        transparent = True
-		)
-	
-	#project
-	
-	xCoord=boundingBox[0]
-	yCoord=boundingBox[1]
-	ppx=(boundingBox[2]-boundingBox[0])/sizeImg[0]
-	ppy=(boundingBox[3]-boundingBox[1])/sizeImg[1]
-	
-	
-	
-	
-	
-	out = open(dest+filename+'.tif', 'wb')
-	out.write(img.read())
-	out.close() 
-	
-	image = Image.open(dest+filename+'.tif')
-	imarray=np.array(image)
-	imarray=np.flipud(imarray)
-	
-	while True:
-		try:
-			output_file=dest+filename+'.tif'
-			# Create gtif (uncomment when using gdal)
-			DataType= gdal.GDT_Byte
-			driver = gdal.GetDriverByName("GTiff")
-			dst_ds = driver.Create(output_file, sizeImg[0], sizeImg[1], 3, DataType)
-			#top left x, w-e pixel resolution, rotation, top left y, rotation, n-s pixel resolution
-			dst_ds.SetGeoTransform( [ xCoord , ppx , 0, yCoord , 0, ppy ] )
-			#set the reference info 
-			srs = osr.SpatialReference()
-			srs.ImportFromEPSG(4326)
-			dst_ds.SetProjection( srs.ExportToWkt() )	
-			# write the band
-			dst_ds.GetRasterBand(1).WriteArray(imarray[:,:,0])
-			dst_ds.GetRasterBand(2).WriteArray(imarray[:,:,1])
-			dst_ds.GetRasterBand(3).WriteArray(imarray[:,:,2])
-			dst_ds.FlushCache()
-			break;
-		except:
-			print ('error wrinting the file\n Delete/close previous version and press enter')
-			raw_input()
-	
-	image.show()
-	print('Done')
 
 def makePreview(array, filename):
 	import numpy as np
@@ -698,6 +800,7 @@ def makePreview(array, filename):
 		print('error in reading image')
 		
 def main():
+
 	while(True):
 		menu=raw_input(" l     Process All\n m     Create mosaic \n d     Download data RM85\n f     Find Holes regions \n e     Extract WMS\n c     Create Cross section \n q     Quit\n\n")
 		if menu == 'q':
@@ -713,12 +816,17 @@ def main():
 			continue;
 		
 		elif menu == "c":
-			dataInputRes2d()
+			csv2matrix()
 			continue;
 		
 		elif menu == "e":
-			convertData()
-			#extractWMS()
+			#Excel2CSV()
+			import numpy as np
+			from PIL import Image
+			import numpy as np
+			A=np.array(Image.open(pathTif+sitename+'_'+'1054'+'.tif'))
+			B=np.array(Image.open(pathTif+sitename+'_'+'1045'+'.tif'))
+			equalizeHorz(A,B)
 			continue;
 			
 		elif menu == "d":
@@ -732,9 +840,9 @@ def main():
 			y=A.shape[0]
 			x=A.shape[1]
 			filename="a405_mosaic2"
-			exportGeoTiff( x, 1,y, filename, A,'no')
+			exportGeoTiff( x, 1,y, filename, A)
 			hs_array = hillshade(A,45, 180, 0.0025)
-			exportGeoTiff( x, 1,y, filename+"_hs", hs_array,'no')
+			exportGeoTiff( x, 1,y, filename+"_hs", hs_array)
 			makePreview(A,filename)
 			makePreview(hs_array,filename+"_hs")
 			
