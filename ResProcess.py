@@ -5,7 +5,7 @@ import sys
 import gdal, osr, ogr
 
 sitename='sa1'
-path='C:\\sync\\wrk\\Appia0216\\GeoRes\\sa1'
+path='C:\\sync\\wrk\\Appia0216\\GeoRes\\frank'
 pathTif=path+ '\\tif\\'
 pathCsv=path+'\\raw\\'
 
@@ -34,6 +34,7 @@ def getSites():
 def downloadRM85():
 	import os.path
 	import serial
+	import numpy as np
 	ser = serial.Serial('COM3', 9600, timeout=1) #Tried with and without the last 3 parameters, and also at 1Mbps, same happens.
 	ser.flushInput()
 	ser.flushOutput()
@@ -52,9 +53,9 @@ def downloadRM85():
 				countStr=str("0%s" %ii)
 			else: 
 				countStr=ii
-			datafiltered=""
+			matrix=np.empty([20,20])
 			for x in range (0,20):
-				sys.stdout.write("\rLoading Grid %s\tL%s" %(ii,(x+1)))
+				sys.stdout.write("\rG %s\tL%s" %(ii,(x+1)))
 				sys.stdout.flush()
 				line=""
 				for y in range (0,20):
@@ -74,18 +75,13 @@ def downloadRM85():
 						else:
 							value=int(dataline.strip())
 						value=value/float(255)
-						value= str("%.2f" % round(value, 2))#convert to resistance values
+						value= round(value, 2)#convert to resistance values
 					if (x%2!=0):#Zigzag mode
-						if (y >0):
-							value+=","
-						line=str(value)+line
+						matrix[19-y][x]=value
 					else:
-						if (y < 19):
-							value+=","
-						line+=str(value)#/(float(255)))
-						
-				if (x<20):
-					datafiltered+=line+"\n"
+						matrix[y][x]=value
+
+		#### Writing file. Checking whether the file already exists ####
 			fname='%ssa1_%s.csv' %(pathCsv,countStr)
 			if (os.path.isfile(fname) and overwrite=="ask"):
 				while True:
@@ -107,14 +103,10 @@ def downloadRM85():
 				fileout.close()
 				sys.stdout.write(" Existed (Overwritten)")
 			elif (os.path.isfile(fname) and overwrite=="na"):
-				sys.stdout.write(" Existed (Not Overwritten)")
+				sys.stdout.write(" File already exists. Not overwritten.")
 			else:
-				fileout= open(fname, 'wb')
-				fileout.write(datafiltered)
-				fileout.close()
-			
-			
-			
+				np.savetxt(fname, matrix, delimiter=",", fmt='%.2f')
+				sys.stdout.write(" Done")
 			sys.stdout.write("\n")
 			sys.stdout.flush()
 		if (started==1 and bytesToRead==''):
@@ -424,16 +416,24 @@ def csv2tif(newGrids):
 |     | |     | |     | |     | |     | |     | |     | |     |\n\
 |_____| |_____| |_____| |_____| |____-| |____|| |-____| ||____|\n\
    1       2       3       4       5       6       7       8\n")
-			if '90' in rotate:
-				mat=np.rot90(mat,1)
-			elif '180' in rotate:
-				mat=np.rot90(mat,2)
-			elif '270' in rotate:
-				mat=np.rot90(mat,3)
-			if 'ud' in rotate:
+			if '1' in rotate:
 				mat=np.flipud(mat)
-			elif 'lr' in rotate:
+			elif '2' in rotate:
+				mat=np.rot90(mat,3)
+			elif '3' in rotate:
+				mat=np.rot90(mat,2)
+			elif '4' in rotate:
+				mat=np.rot90(mat,3)
 				mat=np.fliplr(mat)
+			elif '5' in rotate:
+				mat=np.rot90(mat,1)
+			elif '6' in rotate:
+				mat=np.fliplr(mat)
+			elif '7' in rotate:
+				mat=np.rot90(mat,3)
+				mat=np.flipud(mat)
+			elif '8' in rotate:
+				mat=mat
 		mat=np.flipud(mat)
 		x=mat.shape[1]
 		y=mat.shape[0]
