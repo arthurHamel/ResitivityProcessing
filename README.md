@@ -1,8 +1,11 @@
-### GeoResistivity Processing
+# GeoResistivity Processing
 
 ## Installation
 
 ## Usage
-##Create new survey
+
+###Create new survey
+
 ##Download data
+
 ##Assemble grids
