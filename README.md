@@ -16,10 +16,10 @@ To start with a new survey, you need to create a repertory with the following st
     -geometry.txt
   +raw
 
-## Select the current site
+### Select the current site
 In the space top left, lelect the directory of the site you work on wich contains the above mentionned folders. If it doesn't you will get an error message.
 
-##Download data
+### Download data
 To download data go to File>Import from RM85
   - select the number of the first grid you will download (it should be automatically the right one).
   - select the size of your grid (20 by 20)
@@ -27,4 +27,14 @@ To download data go to File>Import from RM85
   - keep the baudrate at 9600
   - select the corner of the grid you used the most that day (you can still turn and flip everything around later, but it will save you time to have most of them all right)
   
-##  Asemble grids
+###  Asemble grids
+
+## Desctiption of lagorythms
+
+### Despike
+
+### Edge Matching
+
+### Data previsualization
+
+### Export
