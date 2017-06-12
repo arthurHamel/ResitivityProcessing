@@ -21,8 +21,8 @@ The windows will open, but you will stil have the terminal to find out about err
 To start with a new survey, you need to create a repertory with the following structure:
 
 -SITENAME/ <br/>
-    +output/ <br/>
-        -geometry.txt <br/>
+    +output/<br/>
+        -geometry.txt<br/>
     +raw/<br/>
 
 ### Select the current site
