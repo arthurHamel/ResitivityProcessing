@@ -20,13 +20,10 @@ The windows will open, but you will stil have the terminal to find out about err
 ### Create new survey
 To start with a new survey, you need to create a repertory with the following structure:
 
--SITENAME/
-
-+output/
-
--geometry.txt
-
-+raw/
+-SITENAME/<br/>
+... +output/<br/>
+... ... -geometry.txt<br/>
+... +raw/<br/>
 
 ### Select the current site
 In the space top left, lelect the directory of the site you work on wich contains the above mentionned folders. If it doesn't you will get an error message.
