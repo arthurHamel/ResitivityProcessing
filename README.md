@@ -1,20 +1,30 @@
-# GeoResistivity Processing
+# GeoResistivity Processing Manual
 
 ## Installation
 
 The programm is a distributed as a Python script. You need to have Python (3.4 or 2.7) installed on your computer (installed if you have ArcGIS).
 There are dependencies to install separatelly:
 - GDAL
+- PyQt 4
+- Numpy
+- Matplotlib
+
+They are common packages, check on Google how to have them installed on your machine.
 
 ## Usage
-To run the script open the terminal (cmd on windows and then type "python /the/path/to/the/file"
+To run the script open the cmd terminal in windows and type <br/>
+`"python /the/path/to/the/file.py"`<br/>
+The windows will open, but you will stil have the terminal to find out about errors (nothing is perfect).
+
 
 ### Create new survey
 To start with a new survey, you need to create a repertory with the following structure:
 -SITENAME
-  +output
-    -geometry.txt
-  +raw
+
+  ...+output
+  
+    ......-geometry.txt
+  .........+raw
 
 ### Select the current site
 In the space top left, lelect the directory of the site you work on wich contains the above mentionned folders. If it doesn't you will get an error message.
