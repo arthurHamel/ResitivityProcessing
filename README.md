@@ -44,22 +44,21 @@ Empty grids are marked with "0".
 
 Example:
 
-```0   01  02  0<br/>
-03  04  05  0<br/>
-06  09  10  12<br/>
+```0   01  02  0
+03  04  05  0
+06  09  10  12
 0   07  08  0
 ```
 
 
-Incorrect:
+Incorrect (All the lines must be the same length!):
 
-```0   01  02 <br/>
-03  04  05  <br/>
-06  09  10  12<br/>
+```0   01  02 
+03  04  05  
+06  09  10  12
 0  07  08  
 ```
 
-All the lines must be the same length!
 
 ## Desctiption of lagorythms
 
