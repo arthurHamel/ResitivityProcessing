@@ -1,5 +1,11 @@
 # GeoResistivity Processing Manual
 
+## Warning
+This piece of software is distributed as is. It has been written as a Python script and therefore many functionalities are to be adjusted from the code itself. Everyone is highly encouraged to copy, improve and redistribute any part of the code that may be useful. 
+The functionamlity of the GUI program may be limited to the use made of it (size of the grids is fixed, coordinate system list limited, etc.). All of this can be easily modified from the code itself.
+
+This being said, the script should be able to run relatively stable and allow to download data from a RM85 and export the data to a GeoTIFF file.
+
 ## Installation
 
 The programm is a distributed as a Python script. You need to have Python (3.4 or 2.7) installed on your computer (installed if you have ArcGIS).
@@ -58,6 +64,8 @@ Incorrect (All the lines must be the same length!):
 06  09  10  12
 0  07  08  
 ```
+
+Once loaded each grid can be rotated or mirrored from the interface: Press `Go` and use the buttons on the top left corner of the visualization window.
 
 
 ## Desctiption of lagorythms
