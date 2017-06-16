@@ -63,9 +63,16 @@ Incorrect (All the lines must be the same length!):
 ## Desctiption of lagorythms
 
 ### Despike
+Despike option is supposed to remove the noise in the data (misreadings as they occur alwys in teh field). Try with and without and see what's best. Some values are not depiked, then you need to correct them manually: right click on the grid -> `Open grid in editor`.
+You have to manually average the surrounding values of the odd point.
 
 ### Edge Matching
+This important function allows you to not calibrate the remote probes in the field. They only need to be more than 20m away from your current grid. The spacing of teh electrodes does not really matters, but using most of the avilable cable is a safe way to place them (about 2m apart).
+Thicking this option will remove teh tile effect due to different moiture condition (on surveys conducted on several days) and that occur when you move the remote electrodes.
 
 ### Data previsualization
+These function are quite limited as you are expected to visualize the data in a GIS environement later. You can however previsualise the data with two contrast adjustement options: min-max and standart deviation.
 
 ### Export
+You can export your data as a GeoTiff file already with a coordinate system (but not georeferenced). You can select the coordinate system in `Edit` > `Settings`.
+
