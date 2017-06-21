@@ -46,7 +46,7 @@ To download data go to `File` > `Import from RM85`
 
 The grid assemblage is done automatically following the file "geometry.txt" in te repertory "output/".
 
-The file can be edited from `File` > `Assemble grid`. It is a simple tab separated grid table which has to be of complete lines and collums
+The file can be edited from `File` > `Assemble grid`. It is a simple tab separated table which has to be of complete lines and collums. 
 Empty grids are marked with "0".
 
 Example:
@@ -65,6 +65,8 @@ Incorrect (All the lines must be the same length!):
 06  09  10  12
 0  07  08  
 ```
+
+###  Process
 
 Once loaded each grid can be rotated or mirrored from the interface: Press `Go` and use the buttons on the top left corner of the visualization window.
 
