@@ -4,7 +4,7 @@
 This piece of software is distributed as is. It has been written as a Python script and therefore many functionalities are to be adjusted from the code itself. Everyone is highly encouraged to copy, improve and redistribute any part of the code that may be useful. 
 The functionamlity of the GUI program may be limited to the use made of it (size of the grids is fixed, coordinate system list limited, etc.). All of this can be easily modified from the code itself.
 
-This being said, the script should be able to run relatively stable and allow to download data from a RM85 and export the data to a GeoTIFF file.
+This being said, the script should be able to run relatively smooth and allow to download data from a RM85 and export the data to a GeoTIFF file.
 
 ## Installation
 
@@ -32,7 +32,7 @@ To start with a new survey, you need to create a repertory with the following st
 &nbsp;&nbsp;&nbsp;&nbsp;+raw/<br/>
 
 ### Select the current site
-In the space top left, lelect the directory of the site you work on wich contains the above mentionned folders. If it doesn't you will get an error message.
+In the space top left, select the directory of the site you work on wich contains the above mentionned folders. If it doesn't you will get an error message.
 
 ### Download data
 To download data go to `File` > `Import from RM85`
