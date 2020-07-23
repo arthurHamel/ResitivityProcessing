@@ -11,15 +11,23 @@ This being said, the script should be able to run relatively smooth and allow to
 The programm is a distributed as a Python script. You need to have Python (3.4 or 2.7) installed on your computer (installed if you have ArcGIS).
 There are dependencies to install separatelly:
 - GDAL
-- PyQt 4
+- PyQt 5
 - Numpy
 - Matplotlib
+- Serial
+
+It can be done by executing the command:
+pip install numpy matplotlib serial
+
+For GDAL, you may have to follow this tutorial. If you have QGIS you will have a possibly a different version.
+
 
 They are common packages, check on Google how to have them installed on your machine.
 
 ## Usage
 To run the script open the cmd terminal in windows and type <br/>
-`"python /the/path/to/the/file.py"`<br/>
+"cd /the/path/to/the/file"
+`"python GeoUI.py"`<br/>
 The windows will open, but you will stil have the terminal to find out about errors (nothing is perfect).
 
 
